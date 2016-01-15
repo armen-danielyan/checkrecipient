@@ -1,0 +1,17 @@
+* {
+	padding: 0;
+	margin: 0;
+}
+
+.logo-container {
+	padding-top: 50px;
+	margin-bottom: 30px;
+}
+
+.logo-container img {
+	width: 160px;
+}
+
+#login-container {
+	width: 120px;
+}

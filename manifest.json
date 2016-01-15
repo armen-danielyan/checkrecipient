@@ -1,0 +1,53 @@
+{
+   "background": {
+      "scripts": [ 
+         "assets/js/jquery.min.js", 
+         "assets/js/common.js",
+         "assets/js/background.js" 
+      ]
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "js": [ 
+         "assets/js/jquery.min.js", 
+         "assets/js/gmail.js",
+         "assets/js/bootstrap.min.js",
+         "assets/js/hashchange.js",
+         "assets/js/common.js",
+         "assets/js/content.js" ],
+      "matches": [
+         "https://mail.google.com/mail/u/0/*"
+      ],
+      "css": [
+          "assets/css/inject.css"
+      ]
+   } ],
+   "browser_action": {
+       "default_icon": {
+         "19": "assets/images/19.png",
+         "38": "assets/images/38.png"
+       },
+       "default_title": "Check Recipient",
+       "default_popup": "assets/html/popup.html"
+     },
+   "description": "Gmail submit Prompt",
+   "icons": {
+      "128": "assets/images/128.png",
+      "16": "assets/images/16.png",
+      "48": "assets/images/48.png",
+      "64": "assets/images/64.png"
+   },
+   "manifest_version": 2,
+   "name": "Check Recipient",
+   "options_page": "assets/html/options.html",
+   "permissions": [ 
+      "tabs", 
+      "\u003Call_urls>",
+      "storage",
+      "webRequest"
+   ],
+   "web_accessible_resources": [
+      "assets/css/inject.css"
+   ],
+   "version": "0.0.1"
+}
