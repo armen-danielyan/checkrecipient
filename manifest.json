@@ -44,7 +44,9 @@
       "tabs", 
       "\u003Call_urls>",
       "storage",
-      "webRequest"
+      "webRequest",
+      "webNavigation",
+      "tabs"
    ],
    "web_accessible_resources": [
       "assets/css/inject.css"
