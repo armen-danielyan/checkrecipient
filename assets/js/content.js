@@ -1,5 +1,6 @@
 var gmail = null,
-    recipientList = [];
+    recipientList = [],
+    logid = 0;
 gMailManager = {
 
     eventInitialized: false,
@@ -42,66 +43,81 @@ gMailManager = {
                 }).text("Check recipient")
             ),
             $modalBody = $("<div/>", {class: "modal-body"}),
-            $modalTitleInput = $("<input/>", {
-                class: "form-control",
-                id: "check-recipient-title"
+
+            $modalResponseMessage = $("<div/>", {
+                id: "check-recipient-message"
             }),
-            $modalTitleLabel = $("<label/>", {
-                for: "check-recipient-title"
-            }).text("Title"),
-            $modalEmailinput = $("<input/>", {
-                class: "form-control",
-                id: "check-recipient-address"
+            $modalResponseMessageMore = $("<div/>", {
+                id: "check-recipient-message-more",
+                style: "display:none"
             }),
-            $modalEmailLabel = $("<label/>", {
-                for: "check-recipient-address"
-            }).text("Recipient Address"),
-            $modalSubjectInput = $("<input/>", {
-                class: "form-control",
-                id: "check-recipient-subject"
-            }),
-            $modalSubjectLabel = $("<label/>", {
-                for: "check-recipient-subject"
-            }).text("Subject"),
+            $modalToggle = $("<a/>", {
+                id: "check-recipient-toggle"
+            }).text("Click here to learn why CheckRecipient has flagged this email"),
+
             $modalFooter = $("<div/>", {class: "modal-footer"}),
             $modalBackButton = $("<button/>", {
+                "data-dismiss": "modal",
+                id: "modal-dismiss",
+                style: "display:none"
+            }),
+            $modalNoButton = $("<button/>", {
                 class: "btn btn-default",
-                "data-dismiss": "modal"
-            }).text("Back"),
+                id: "modal-no"
+            }).text("No"),
             $modalSendButton = $("<button/>", {
                 class: "btn btn-primary",
                 id: "modal-send"
             }).text("Send").prop("disabled", true);
 
-        $("<div/>", {class: "form-group"}).append($modalTitleLabel, $modalTitleInput).appendTo($modalBody);
-        $("<div/>", {class: "form-group"}).append($modalEmailLabel, $modalEmailinput).appendTo($modalBody);
-        $("<div/>", {class: "form-group"}).append($modalSubjectLabel, $modalSubjectInput).appendTo($modalBody);
+        $("<div/>", {class: "form-group"}).append($modalResponseMessage).appendTo($modalBody);
+        $("<div/>", {class: "form-group"}).append($modalResponseMessageMore).appendTo($modalBody);
+        $("<div/>", {class: "form-group"}).append($modalToggle).appendTo($modalBody);
 
-        $modalFooter.append($modalBackButton, $modalSendButton);
+        $modalFooter.append($modalBackButton, $modalNoButton, $modalSendButton);
         $modalContent.append($modalHeader, $modalBody, $modalFooter).appendTo($modalDialog);
         $modal.append($modalDialog).appendTo($body);
 
         $modalSendButton.click(function () {
-            //console.log(jsonBuilder(recipientList));
-            var jsonData = jsonBuilder(recipientList);
+            respond("yes");
+            $sendButton.click();
+            $modalBackButton.click();
+        });
+
+        $modalNoButton.click(function () {
+            respond("no");
+            $modalBackButton.click();
+        });
+
+        function respond(sendorno){
+            var jsonObj = {
+                action: "user_response",
+                username: "tom@quiversoftware.com",
+                rb_username: "",
+                user_domain: "checkrecipient.com",
+                api_token: "b1b6f6938c96e3be0e42de3d61777015",
+                product: "ai",
+                log_id: logid,
+                response: sendorno,
+                yes_and_add_response: "",
+                version: "1.5.1.0"
+            };
+            var jsonStr = JSON.stringify(jsonObj);
+
             $.ajax({
                 dataType: "json",
                 type: "POST",
-                data: jsonData,
+                data: jsonStr,
                 contentType: "application/json",
-                url: "https://quiverlive.getcheckrecipient.com/api_external/check_email",
+                url: "https://quiverlive.getcheckrecipient.com/api_external/user_response",
                 success: function (data) {
                     console.log(data);
                 },
                 error: function () {
                     console.log("ERROR");
                 }
-
             });
-
-            $sendButton.click();
-            $modalBackButton.click();
-        })
+        }
     },
 
     displayApiResponse: function (data) {
@@ -139,9 +155,53 @@ gMailManager = {
 
                 $("#check-recipient-xt-modal #check-recipient-address").val(email);
                 $("#check-recipient-xt-modal #check-recipient-subject").val(subject);
-                //$("#check-recipient-xt-modal #check-recipient-autocomplete").val(autocompleteListStr);
                 $("#check-recipient-xt-modal").modal();
                 $("#check-recipient-xt-modal #modal-send").prop("disabled", true);
+
+                var jsonData = jsonBuilder(recipientList);
+                $.ajax({
+                    dataType: "json",
+                    type: "POST",
+                    data: jsonData,
+                    contentType: "application/json",
+                    url: "https://quiverlive.getcheckrecipient.com/api_external/check_email",
+                    success: function (data) {
+                        console.log(data);
+
+                        logid = data["log_id"];
+
+                        var message = data["message"],
+                        more = data["more_detail"];
+                        if (message == "") {
+                            message = "No Message";
+                        }
+                        if (more == "") {
+                            more = "No More Details";
+                        }
+
+                        $("#check-recipient-xt-modal #check-recipient-message").text(message);
+                        $("#check-recipient-xt-modal #check-recipient-message-more").text(more);
+                    },
+                    error: function () {
+                        console.log("ERROR");
+                    }
+                });
+
+                var toggled = false;
+                $("a#check-recipient-toggle").on("click", function(){
+                    if(toggled) {
+                        toggled = false;
+                        $("div#check-recipient-message").css("display", "block");
+                        $("div#check-recipient-message-more").css("display", "none");
+                        $("a#check-recipient-toggle").text("Click here to learn why CheckRecipient has flagged this email");
+                    } else {
+                        toggled = true;
+                        $("div#check-recipient-message").css("display", "none");
+                        $("div#check-recipient-message-more").css("display", "block");
+                        $("a#check-recipient-toggle").text("Return");
+                    }
+                });
+
                 chrome.extension.sendMessage({msg: "api-call"});
             });
 
@@ -162,10 +222,10 @@ gMailManager = {
                     $("div.ah.aiv.aJS div.am").each(function () {
                         if ($(this).children("div.ao5").length > 0) {
                             similarRecipient["name"] = $(this).children(".ao5").text();
-                            similarRecipient["email"] = $(this).children(".Sr").text();
+                            similarRecipient["address"] = $(this).children(".Sr").text();
                         } else {
                             similarRecipient["name"] = "";
-                            similarRecipient["email"] = $(this).text();
+                            similarRecipient["address"] = $(this).text();
                         }
                         similarRecipient["email_name"] = "";
                         similarRecipient["email_domain"] = "";
@@ -222,7 +282,7 @@ $(window).hashchange(function () {
     }
 });
 
-$('html').bind('keypress', function (e) {
+$("html").bind("keypress", function (e) {
     if (e.keyCode === 13 && e.ctrlKey) {
         return false;
     }
@@ -232,9 +292,11 @@ function jsonBuilder(recipientsData) {
 
     var recipients = [],
         tmpRecipient,
-        weight = 0;
+        weight = 0,
+        rb_recipients = [];
 
     for(var recipientData in recipientsData){
+        rb_recipients.push(recipientData);
         tmpRecipient = recipientsData[recipientData];
         tmpRecipient["weight"] = ++weight;
         recipients.push(tmpRecipient);
@@ -249,10 +311,7 @@ function jsonBuilder(recipientsData) {
         version: "1.5.1.9",
         device: "gmail",
         recipients: recipients,
-        rb_recipients: [
-            "tomadams787@gmail.com",
-            "tim@checkrecipient.com"
-        ],
+        rb_recipients: rb_recipients,
         reply_to: " <7F651A1EJSIFF428B3239A37DF227959C544469@ldsexchange01.thoj.local>",
         num_attachments: 0,
         size_attachments: "0.0",

@@ -1,15 +1,15 @@
 {
    "background": {
-      "scripts": [ 
-         "assets/js/jquery.min.js", 
+      "scripts": [
+         "assets/js/jquery.min.js",
          "assets/js/common.js",
-         "assets/js/background.js" 
+         "assets/js/background.js"
       ]
    },
    "content_scripts": [ {
       "all_frames": true,
-      "js": [ 
-         "assets/js/jquery.min.js", 
+      "js": [
+         "assets/js/jquery.min.js",
          "assets/js/gmail.js",
          "assets/js/bootstrap.min.js",
          "assets/js/hashchange.js",
@@ -40,8 +40,8 @@
    "manifest_version": 2,
    "name": "Check Recipient",
    "options_page": "assets/html/options.html",
-   "permissions": [ 
-      "tabs", 
+   "permissions": [
+      "tabs",
       "\u003Call_urls>",
       "storage",
       "webRequest",
