@@ -84,8 +84,20 @@ button.close {
 	padding: 15px;
 }
 
-.form-group {
-	margin-bottom: 15px;
+.in {
+	white-space: pre-wrap !important;
+    color: #000 !important;
+    cursor: default !important;
+}
+.in a {
+    color: #15c;
+    cursor: pointer;
+    display: block;
+    margin: 50px 0 0 30px;
+    text-decoration: underline;
+}
+.in:hover {
+    text-decoration: none !important;
 }
 
 .btn {
@@ -148,4 +160,13 @@ button.close {
 	padding: 15px;
 	text-align: right;
 	border-top: 1px solid rgb(229, 229, 229);
+    overflow: hidden;
+}
+
+.modal-footer #modal-send {
+    float: left;
+}
+
+.modal-footer #modal-no {
+    float: right;
 }

@@ -1,10 +1,54 @@
 var gmail = null,
+
+    api_token = "b1b6f6938c96e3be0e42de3d61777015",
+    username = "tom@quiversoftware.com",
+    user_domain = "quiversoftware.com",
+
     recipientList = [],
+    regexObj = {},
     logid = 0;
+
+$(window).load(function () {
+    exGetLastSync();
+    setInterval(function(){
+        exGetLastSync();
+    }, 1800000);
+
+    function exGetLastSync() {
+        var objGetLastSync = {
+            cr_action: "get_last_sync",
+            api_token: api_token,
+            username: username,
+            user_domain: user_domain,
+            version: "1.5.1.9",
+            addin_version: "1.5.17.0",
+            just_opened: true,
+            show_signature: false
+        };
+        var jsonGetLastSync = JSON.stringify(objGetLastSync);
+
+        $.ajax({
+            dataType: "json",
+            type: "POST",
+            data: jsonGetLastSync,
+            contentType: "application/json",
+            url: "https://quiverlive.getcheckrecipient.com/api_external/get_last_sync",
+            success: function (data) {
+                var regexCompressed = data["regex"];
+                var regexDecompressed = JXG.decompress(regexCompressed);
+                regexObj = JSON.parse(regexDecompressed);
+                console.log(regexDecompressed);
+            },
+            error: function () {
+                console.log("ERROR");
+            }
+        })
+    }
+});
+
 gMailManager = {
 
     eventInitialized: false,
-
     entityId: "",
 
     addModalFrame: function () {
@@ -31,16 +75,10 @@ gMailManager = {
             $modalDialog = $("<div/>", {class: "modal-dialog"}),
             $modalContent = $("<div/>", {class: "modal-content"}),
             $modalHeader = $("<div/>", {class: "modal-header"}).append(
-                $("<button/>", {
-                    type: "button",
-                    class: "close",
-                    "data-dismiss": "modal",
-                    "aria-label": "Close"
-                }).append($('<span aria-hidden="true">&times;</span>')),
                 $("<h4/>", {
                     class: "modal-title",
                     id: "modal-title"
-                }).text("Check recipient")
+                }).text("CheckRecipient Example Warning")
             ),
             $modalBody = $("<div/>", {class: "modal-body"}),
 
@@ -68,7 +106,7 @@ gMailManager = {
             $modalSendButton = $("<button/>", {
                 class: "btn btn-primary",
                 id: "modal-send"
-            }).text("Send").prop("disabled", true);
+            }).text("Yes").prop("disabled", true);
 
         $("<div/>", {class: "form-group"}).append($modalResponseMessage).appendTo($modalBody);
         $("<div/>", {class: "form-group"}).append($modalResponseMessageMore).appendTo($modalBody);
@@ -79,35 +117,35 @@ gMailManager = {
         $modal.append($modalDialog).appendTo($body);
 
         $modalSendButton.click(function () {
-            respond("yes");
+            dataUserResponse("yes");
             $sendButton.click();
             $modalBackButton.click();
         });
 
         $modalNoButton.click(function () {
-            respond("no");
+            dataUserResponse("no");
             $modalBackButton.click();
         });
 
-        function respond(sendorno){
-            var jsonObj = {
+        function dataUserResponse(YesOrNo){
+            var objUserResponse = {
                 action: "user_response",
-                username: "tom@quiversoftware.com",
+                username: username,
                 rb_username: "",
                 user_domain: "checkrecipient.com",
-                api_token: "b1b6f6938c96e3be0e42de3d61777015",
+                api_token: api_token,
                 product: "ai",
                 log_id: logid,
-                response: sendorno,
+                response: YesOrNo,
                 yes_and_add_response: "",
                 version: "1.5.1.0"
             };
-            var jsonStr = JSON.stringify(jsonObj);
+            var jsonUserResponse = JSON.stringify(objUserResponse);
 
             $.ajax({
                 dataType: "json",
                 type: "POST",
-                data: jsonStr,
+                data: jsonUserResponse,
                 contentType: "application/json",
                 url: "https://quiverlive.getcheckrecipient.com/api_external/user_response",
                 success: function (data) {
@@ -150,15 +188,149 @@ gMailManager = {
                 var $parentTable = $(this).parents("table.aoP.aoC"),
                     $email = $($parentTable.find("form table.GS div.vR div.vT")[0]),
                     $subject = $parentTable.find("form div.aoD.az6 input[name='subjectbox']"),
+                    $body = $parentTable.find("div.Am.Al.editable.LW-avf"),
                     email = ($email) ? $email.text() : "",
-                    subject = $subject.val();
+                    emailSubject = $subject.val(),
+                    emailBody = $body.text(),
+                    emailAttachments = "test";
 
-                $("#check-recipient-xt-modal #check-recipient-address").val(email);
-                $("#check-recipient-xt-modal #check-recipient-subject").val(subject);
-                $("#check-recipient-xt-modal").modal();
+                pageClear();
+                $("#check-recipient-xt-modal").modal({backdrop: 'static', keyboard: false});
                 $("#check-recipient-xt-modal #modal-send").prop("disabled", true);
 
-                var jsonData = jsonBuilder(recipientList);
+                for(var filterKey in regexObj) {
+                    var filterOut = [];
+                    filterOut = checkFilters(regexObj[filterKey], emailBody, emailSubject, emailAttachments);
+                    console.log(filterOut);
+                }
+
+                function checkFilters(filter, emailBody, emailSubject, emailAttachment) {
+                    var filterA_matches = [],
+                        filterB_matches = [],
+                        filterC_matches = [],
+
+                        filter_obj = regexCorrect(filter["s_1"]),
+                        filter_obj2 = regexCorrect(filter["s_2"]),
+                        filter_obj3 = regexCorrect(filter["s_3"]),
+
+                        scopeArr = filter.scope,
+                        scopeKeyValue = [],
+                        location = "",
+                        chars = 0,
+                        searchStr = "",
+                        foundItem = "",
+                        found_list = [];
+
+                    $.each(scopeArr, function(scopeK, scope){
+                        scopeKeyValue = scope.split("-");
+                        location = scopeKeyValue[0];
+                        chars = scopeKeyValue[1];
+
+                        switch(location) {
+                            case "b":
+                                if( chars == 0 ) { searchStr = emailBody; } else { searchStr = emailBody.substr(0, chars); }
+                                break;
+                            case "s":
+                                if( chars == 0 ) { searchStr = emailSubject; } else { searchStr = emailSubject.substr(0, chars); }
+                                break;
+                            case "n":
+                                //console.log("newbody", "--------", chars);
+                                break;
+                            case "o":
+                                //console.log("oldbody", "--------", chars);
+                                break;
+                            case "a":
+                                //console.log("attachment", "--------", chars);
+                                break;
+                            default:
+                                searchStr = "";
+                        }
+
+                        if(searchStr){
+                            if(!filter["s_1_r"]){
+                                filterA_matches = searchStr.match(filter_obj);
+                                if(filterA_matches){
+                                    delete filterA_matches["index"];
+                                    delete filterA_matches["input"];
+                                    if(filter["s_2"] && filter["s_2"] != ""){
+                                        $.each(filterA_matches, function(matchA, matchAvalue){
+                                            if(!filter["s_2_r"]){
+                                                filterB_matches = matchAvalue.match(filter_obj2);
+                                                if(filterB_matches){
+                                                    delete filterB_matches["index"];
+                                                    delete filterB_matches["input"];
+                                                    if(filter["s_3"] && filter["s_3"] != ""){
+                                                        $.each(filterB_matches, function(matchB, matchBvalue){
+                                                            if(!filter["s_3_r"]){
+                                                                filterC_matches = matchBvalue.match(filter_obj3);
+                                                                if(filterC_matches){
+                                                                    delete filterC_matches["index"];
+                                                                    delete filterC_matches["input"];
+                                                                    $.each(filterC_matches, function(matchC, matchCvalue){
+                                                                        foundItem = matchCvalue.replace(/^\s+|\s+$/gm,'').toLowerCase();
+                                                                        if($.inArray(foundItem, found_list) == -1) {
+                                                                            found_list.push(foundItem);
+                                                                        }
+                                                                    })
+                                                                }
+                                                            } else {
+                                                                foundItem = matchBvalue.replace(filter_obj3, "");
+                                                                if(foundItem != ""){
+                                                                    foundItem = foundItem.replace(/^\s+|\s+$/gm,'').toLowerCase();
+                                                                    if($.inArray(foundItem, found_list) == -1) {
+                                                                        found_list.push(foundItem);
+                                                                    }
+                                                                }
+                                                            }
+                                                        })
+                                                    } else {
+                                                        $.each(filterB_matches, function(matchB, matchBvalue){
+                                                            foundItem = matchBvalue.replace(/^\s+|\s+$/gm,'').toLowerCase();
+                                                            if($.inArray(foundItem, found_list) == -1) {
+                                                                found_list.push(foundItem);
+                                                            }
+                                                        })
+                                                    }
+                                                }
+                                            } else {
+                                                foundItem = matchAvalue.replace(filter_obj2, "");
+                                                if(foundItem != ""){
+                                                    foundItem = foundItem.replace(/^\s+|\s+$/gm,'').toLowerCase();
+                                                    if($.inArray(foundItem, found_list) == -1) {
+                                                        found_list.push(foundItem);
+                                                    }
+                                                }
+                                            }
+                                        });
+                                    } else {
+                                        $.each(filterA_matches, function(matchA, matchAvalue){
+                                            foundItem = matchAvalue.replace(/^\s+|\s+$/gm,'').toLowerCase();
+                                            if($.inArray(foundItem, found_list) == -1) {
+                                                found_list.push(foundItem);
+                                            }
+                                        })
+                                    }
+                                }
+                            } else {
+                                foundItem = searchStr.replace(filter_obj, "");
+                                if(foundItem != ""){
+                                    foundItem = foundItem.replace(/^\s+|\s+$/gm,'').toLowerCase();
+                                    if($.inArray(foundItem, found_list) == -1) {
+                                        found_list.push(foundItem);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    return found_list;
+                }
+
+                function regexCorrect(regexUncorrect){
+                    return regexUncorrect.replace("?i:", "");
+                }
+
+
+                var jsonData = dataCheckEmail(recipientList);
                 $.ajax({
                     dataType: "json",
                     type: "POST",
@@ -188,19 +360,31 @@ gMailManager = {
                 });
 
                 var toggled = false;
+                pageSwitchMain();
+
                 $("a#check-recipient-toggle").on("click", function(){
                     if(toggled) {
-                        toggled = false;
-                        $("div#check-recipient-message").css("display", "block");
-                        $("div#check-recipient-message-more").css("display", "none");
-                        $("a#check-recipient-toggle").text("Click here to learn why CheckRecipient has flagged this email");
+                        pageSwitchMain();
                     } else {
-                        toggled = true;
-                        $("div#check-recipient-message").css("display", "none");
-                        $("div#check-recipient-message-more").css("display", "block");
-                        $("a#check-recipient-toggle").text("Return");
+                        pageSwitchMore();
                     }
                 });
+                function pageSwitchMain(){
+                    toggled = false;
+                    $("div#check-recipient-message").css("display", "block");
+                    $("div#check-recipient-message-more").css("display", "none");
+                    $("a#check-recipient-toggle").text("Click here to learn why CheckRecipient has flagged this email");
+                }
+                function pageSwitchMore(){
+                    toggled = true;
+                    $("div#check-recipient-message").css("display", "none");
+                    $("div#check-recipient-message-more").css("display", "block");
+                    $("a#check-recipient-toggle").text("Return");
+                }
+                function pageClear(){
+                    $("#check-recipient-xt-modal #check-recipient-message").text("");
+                    $("#check-recipient-xt-modal #check-recipient-message-more").text("");
+                }
 
                 chrome.extension.sendMessage({msg: "api-call"});
             });
@@ -288,7 +472,7 @@ $("html").bind("keypress", function (e) {
     }
 });
 
-function jsonBuilder(recipientsData) {
+function dataCheckEmail(recipientsData) {
 
     var recipients = [],
         tmpRecipient,
@@ -302,12 +486,12 @@ function jsonBuilder(recipientsData) {
         recipients.push(tmpRecipient);
     }
 
-    var jsonObj = {
+    var objCheckEmail = {
         cr_action: "check_email",
-        api_token: "b1b6f6938c96e3be0e42de3d61777015",
-        username: "tom@quiversoftware.com",
+        api_token: api_token,
+        username: username,
         rb_username: "",
-        user_domain: "quiversoftware.com",
+        user_domain: user_domain,
         version: "1.5.1.9",
         device: "gmail",
         recipients: recipients,
@@ -329,8 +513,8 @@ function jsonBuilder(recipientsData) {
         regex_filters_return: {}
     };
 
-    var jsonStr = JSON.stringify(jsonObj);
-    return jsonStr;
+    var jsonCheckEmail = JSON.stringify(objCheckEmail);
+    return jsonCheckEmail;
 }
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {

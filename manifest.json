@@ -14,7 +14,8 @@
          "assets/js/bootstrap.min.js",
          "assets/js/hashchange.js",
          "assets/js/common.js",
-         "assets/js/content.js" ],
+         "assets/js/content.js",
+         "assets/js/jsxcompressor.min.js" ],
       "matches": [
          "https://mail.google.com/mail/u/0/*"
       ],
