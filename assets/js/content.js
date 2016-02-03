@@ -6,7 +6,8 @@ var gmail = null,
 
     recipientList = [],
     regexObj = {},
-    logid = 0;
+    logid = 0,
+    regex_filters_return = {};
 
 $(window).load(function () {
     exGetLastSync();
@@ -199,18 +200,21 @@ gMailManager = {
                 $("#check-recipient-xt-modal #modal-send").prop("disabled", true);
 
                 for(var filterKey in regexObj) {
-                    var filterOut = [];
-                    filterOut = checkFilters(regexObj[filterKey], emailBody, emailSubject, emailAttachments);
-                    console.log(filterOut);
+                    var checkedFilter = checkFilters(regexObj[filterKey], emailBody, emailSubject, emailAttachments);
+                    if(checkedFilter.length > 0){
+                        regex_filters_return[filterKey] = checkedFilter;
+                    }
                 }
+
+                console.log(regex_filters_return);
 
                 function checkFilters(filter, emailBody, emailSubject, emailAttachment) {
                     var filterA_matches = [],
                         filterB_matches = [],
                         filterC_matches = [],
 
-                        filter_obj = regexCorrect(filter["s_1"]),
-                        filter_obj2 = regexCorrect(filter["s_2"]),
+                        filter_obj = new RegExp(regexCorrect(filter["s_1"]), "g"),
+                        filter_obj2 = new RegExp(regexCorrect(filter["s_2"]), "g"),
                         filter_obj3 = regexCorrect(filter["s_3"]),
 
                         scopeArr = filter.scope,
@@ -219,7 +223,22 @@ gMailManager = {
                         chars = 0,
                         searchStr = "",
                         foundItem = "",
-                        found_list = [];
+                        found_list = [],
+                        newBody = "",
+                        oldBody = "",
+                        oldBodyIndex = -1;
+
+                    var oldBodyMatch = emailBody.match(/<[\w\d@.]+>\swrote:/);
+                    if(oldBodyMatch){
+                        oldBodyIndex = oldBodyMatch["index"];
+                    }
+                    if(oldBodyIndex < 1){
+                        newBody = emailBody;
+                        oldBody = "";
+                    } else {
+                        newBody = emailBody.substring(0, oldBodyIndex - 1);
+                        oldBody = emailBody.substring(oldBodyIndex, emailBody.length);
+                    }
 
                     $.each(scopeArr, function(scopeK, scope){
                         scopeKeyValue = scope.split("-");
@@ -234,10 +253,10 @@ gMailManager = {
                                 if( chars == 0 ) { searchStr = emailSubject; } else { searchStr = emailSubject.substr(0, chars); }
                                 break;
                             case "n":
-                                //console.log("newbody", "--------", chars);
+                                if( chars == 0 ) { searchStr = newBody; } else { searchStr = newBody.substr(0, chars); }
                                 break;
                             case "o":
-                                //console.log("oldbody", "--------", chars);
+                                if( chars == 0 ) { searchStr = oldBody; } else { searchStr = oldBody.substr(0, chars); }
                                 break;
                             case "a":
                                 //console.log("attachment", "--------", chars);
@@ -252,14 +271,15 @@ gMailManager = {
                                 if(filterA_matches){
                                     delete filterA_matches["index"];
                                     delete filterA_matches["input"];
-                                    if(filter["s_2"] && filter["s_2"] != ""){
+                                    if(filter["s_2"]){
                                         $.each(filterA_matches, function(matchA, matchAvalue){
                                             if(!filter["s_2_r"]){
                                                 filterB_matches = matchAvalue.match(filter_obj2);
+                                                console.log(matchAvalue, filter_obj2, filterB_matches);
                                                 if(filterB_matches){
                                                     delete filterB_matches["index"];
                                                     delete filterB_matches["input"];
-                                                    if(filter["s_3"] && filter["s_3"] != ""){
+                                                    if(filter["s_3"]){
                                                         $.each(filterB_matches, function(matchB, matchBvalue){
                                                             if(!filter["s_3_r"]){
                                                                 filterC_matches = matchBvalue.match(filter_obj3);
@@ -275,7 +295,7 @@ gMailManager = {
                                                                 }
                                                             } else {
                                                                 foundItem = matchBvalue.replace(filter_obj3, "");
-                                                                if(foundItem != ""){
+                                                                if(foundItem){
                                                                     foundItem = foundItem.replace(/^\s+|\s+$/gm,'').toLowerCase();
                                                                     if($.inArray(foundItem, found_list) == -1) {
                                                                         found_list.push(foundItem);
@@ -293,27 +313,31 @@ gMailManager = {
                                                     }
                                                 }
                                             } else {
-                                                foundItem = matchAvalue.replace(filter_obj2, "");
-                                                if(foundItem != ""){
-                                                    foundItem = foundItem.replace(/^\s+|\s+$/gm,'').toLowerCase();
-                                                    if($.inArray(foundItem, found_list) == -1) {
-                                                        found_list.push(foundItem);
+                                                if(matchAvalue) {
+                                                    foundItem = matchAvalue.replace(filter_obj2, "");
+                                                    if (foundItem) {
+                                                        foundItem = foundItem.replace(/^\s+|\s+$/gm, '').toLowerCase();
+                                                        if ($.inArray(foundItem, found_list) == -1) {
+                                                            found_list.push(foundItem);
+                                                        }
                                                     }
                                                 }
                                             }
                                         });
                                     } else {
                                         $.each(filterA_matches, function(matchA, matchAvalue){
-                                            foundItem = matchAvalue.replace(/^\s+|\s+$/gm,'').toLowerCase();
-                                            if($.inArray(foundItem, found_list) == -1) {
-                                                found_list.push(foundItem);
+                                            if(matchAvalue){
+                                                foundItem = matchAvalue.replace(/^\s+|\s+$/gm,'').toLowerCase();
+                                                if($.inArray(foundItem, found_list) == -1) {
+                                                    found_list.push(foundItem);
+                                                }
                                             }
                                         })
                                     }
                                 }
                             } else {
                                 foundItem = searchStr.replace(filter_obj, "");
-                                if(foundItem != ""){
+                                if(foundItem){
                                     foundItem = foundItem.replace(/^\s+|\s+$/gm,'').toLowerCase();
                                     if($.inArray(foundItem, found_list) == -1) {
                                         found_list.push(foundItem);
@@ -326,7 +350,7 @@ gMailManager = {
                 }
 
                 function regexCorrect(regexUncorrect){
-                    return regexUncorrect.replace("?i:", "");
+                    return regexUncorrect.replace(/(\?i:)+/g, "");
                 }
 
 
@@ -510,7 +534,7 @@ function dataCheckEmail(recipientsData) {
             attachment_words: ""
         }],
         subject_words: "",
-        regex_filters_return: {}
+        regex_filters_return: regex_filters_return
     };
 
     var jsonCheckEmail = JSON.stringify(objCheckEmail);
