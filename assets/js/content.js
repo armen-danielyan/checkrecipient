@@ -7,9 +7,12 @@ var gmail = null,
     recipientList = [],
     regexObj = {},
     logid = 0,
-    regex_filters_return = {};
+    regex_filters_return = {},
+    has_attachment = false,
+    num_attachments = 0,
+    attachments = [];
 
-$(window).load(function () {
+$(window).load(function() {
     exGetLastSync();
     setInterval(function(){
         exGetLastSync();
@@ -121,6 +124,7 @@ gMailManager = {
             dataUserResponse("yes");
             $sendButton.click();
             $modalBackButton.click();
+            recipientList = [];
         });
 
         $modalNoButton.click(function () {
@@ -165,6 +169,8 @@ gMailManager = {
     },
 
     addSendButtonEventHandler: function () {
+        regex_filters_return = {};
+
         var self = this,
             $sendButton = $(".T-I.J-J5-Ji.aoO.T-I-atl.L3"),
             $messageForm = $("div.AD table form"),
@@ -190,10 +196,31 @@ gMailManager = {
                     $email = $($parentTable.find("form table.GS div.vR div.vT")[0]),
                     $subject = $parentTable.find("form div.aoD.az6 input[name='subjectbox']"),
                     $body = $parentTable.find("div.Am.Al.editable.LW-avf"),
+                    $emailAttachments = $parentTable.find("div.GW .dL"),
                     email = ($email) ? $email.text() : "",
                     emailSubject = $subject.val(),
-                    emailBody = $body.text(),
+                    emailBodyHtml = $body.contents(),
+                    emailBody = "",
                     emailAttachments = "test";
+
+                num_attachments = 0;
+                attachments = [];
+                $.each($emailAttachments, function(attK, attV){
+                    num_attachments++;
+                    var emailAttFile = $(attV).find("a.dO div.vI").text();
+                    var emailAttFileSize = $(attV).find("a.dO div.vJ").text();
+                    var attachment = {
+                        name: emailAttFile,
+                        extension: emailAttFile.replace(/^.*\./, ""),
+                        attachment_words: ""
+                    };
+                    attachments.push(attachment);
+                    if(num_attachments > 0) { has_attachment = true } else { has_attachment = false }
+                });
+
+                $(emailBodyHtml).each(function(){
+                    emailBody = emailBody + $(this).text() + "\n";
+                });
 
                 pageClear();
                 $("#check-recipient-xt-modal").modal({backdrop: 'static', keyboard: false});
@@ -206,8 +233,6 @@ gMailManager = {
                     }
                 }
 
-                console.log(regex_filters_return);
-
                 function checkFilters(filter, emailBody, emailSubject, emailAttachment) {
                     var filterA_matches = [],
                         filterB_matches = [],
@@ -215,7 +240,7 @@ gMailManager = {
 
                         filter_obj = new RegExp(regexCorrect(filter["s_1"]), "g"),
                         filter_obj2 = new RegExp(regexCorrect(filter["s_2"]), "g"),
-                        filter_obj3 = regexCorrect(filter["s_3"]),
+                        filter_obj3 = new RegExp(regexCorrect(filter["s_3"]), "g"),
 
                         scopeArr = filter.scope,
                         scopeKeyValue = [],
@@ -275,7 +300,6 @@ gMailManager = {
                                         $.each(filterA_matches, function(matchA, matchAvalue){
                                             if(!filter["s_2_r"]){
                                                 filterB_matches = matchAvalue.match(filter_obj2);
-                                                console.log(matchAvalue, filter_obj2, filterB_matches);
                                                 if(filterB_matches){
                                                     delete filterB_matches["index"];
                                                     delete filterB_matches["input"];
@@ -287,7 +311,7 @@ gMailManager = {
                                                                     delete filterC_matches["index"];
                                                                     delete filterC_matches["input"];
                                                                     $.each(filterC_matches, function(matchC, matchCvalue){
-                                                                        foundItem = matchCvalue.replace(/^\s+|\s+$/gm,'').toLowerCase();
+                                                                        foundItem = matchCvalue.replace(/^\s+|\s+$/gm, "").toLowerCase();
                                                                         if($.inArray(foundItem, found_list) == -1) {
                                                                             found_list.push(foundItem);
                                                                         }
@@ -296,7 +320,7 @@ gMailManager = {
                                                             } else {
                                                                 foundItem = matchBvalue.replace(filter_obj3, "");
                                                                 if(foundItem){
-                                                                    foundItem = foundItem.replace(/^\s+|\s+$/gm,'').toLowerCase();
+                                                                    foundItem = foundItem.replace(/^\s+|\s+$/gm, "").toLowerCase();
                                                                     if($.inArray(foundItem, found_list) == -1) {
                                                                         found_list.push(foundItem);
                                                                     }
@@ -305,7 +329,7 @@ gMailManager = {
                                                         })
                                                     } else {
                                                         $.each(filterB_matches, function(matchB, matchBvalue){
-                                                            foundItem = matchBvalue.replace(/^\s+|\s+$/gm,'').toLowerCase();
+                                                            foundItem = matchBvalue.replace(/^\s+|\s+$/gm, "").toLowerCase();
                                                             if($.inArray(foundItem, found_list) == -1) {
                                                                 found_list.push(foundItem);
                                                             }
@@ -316,7 +340,7 @@ gMailManager = {
                                                 if(matchAvalue) {
                                                     foundItem = matchAvalue.replace(filter_obj2, "");
                                                     if (foundItem) {
-                                                        foundItem = foundItem.replace(/^\s+|\s+$/gm, '').toLowerCase();
+                                                        foundItem = foundItem.replace(/^\s+|\s+$/gm, "").toLowerCase();
                                                         if ($.inArray(foundItem, found_list) == -1) {
                                                             found_list.push(foundItem);
                                                         }
@@ -327,7 +351,7 @@ gMailManager = {
                                     } else {
                                         $.each(filterA_matches, function(matchA, matchAvalue){
                                             if(matchAvalue){
-                                                foundItem = matchAvalue.replace(/^\s+|\s+$/gm,'').toLowerCase();
+                                                foundItem = matchAvalue.replace(/^\s+|\s+$/gm, "").toLowerCase();
                                                 if($.inArray(foundItem, found_list) == -1) {
                                                     found_list.push(foundItem);
                                                 }
@@ -338,7 +362,7 @@ gMailManager = {
                             } else {
                                 foundItem = searchStr.replace(filter_obj, "");
                                 if(foundItem){
-                                    foundItem = foundItem.replace(/^\s+|\s+$/gm,'').toLowerCase();
+                                    foundItem = foundItem.replace(/^\s+|\s+$/gm, "").toLowerCase();
                                     if($.inArray(foundItem, found_list) == -1) {
                                         found_list.push(foundItem);
                                     }
@@ -423,7 +447,6 @@ gMailManager = {
                 var matchLength = $(this).children(".vO").val().length;
 
                 if ($(e.target).is("div.vR")) {
-
                     recipientAddress = $(e.target).find(".vN").attr("email");
                     var weight = 0;
 
@@ -471,6 +494,7 @@ gMailManager = {
                 }
                 //console.log(recipientList);
             });
+
         }
     },
 
@@ -521,18 +545,14 @@ function dataCheckEmail(recipientsData) {
         recipients: recipients,
         rb_recipients: rb_recipients,
         reply_to: " <7F651A1EJSIFF428B3239A37DF227959C544469@ldsexchange01.thoj.local>",
-        num_attachments: 0,
+        num_attachments: num_attachments,
         size_attachments: "0.0",
         sandpit_client: false,
         rules: "",
         email_type: "new_email",
         attachment_extensions: "",
-        has_attachment: true,
-        attachments: [{
-            name: "Test document",
-            extension: ".doc",
-            attachment_words: ""
-        }],
+        has_attachment: has_attachment,
+        attachments: attachments,
         subject_words: "",
         regex_filters_return: regex_filters_return
     };
